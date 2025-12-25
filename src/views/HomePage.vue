@@ -3,22 +3,14 @@
     <ion-header class="ion-no-border">
       <ion-toolbar>
         <!-- <ion-title>LabelIQ</ion-title> -->
-        <ion-img
-          src="/src/assets/img/labeliq-nobg.png"
-          alt="labelIQ"
-          class="logo"
-        ></ion-img>
+        <ion-img src="/labeliq-nobg.png" alt="labelIQ" class="logo"></ion-img>
       </ion-toolbar>
     </ion-header>
     <ion-content :fullscreen="true">
       <ion-header class="ion-no-border" collapse="condense">
         <ion-toolbar>
           <!-- <ion-title size="large">LabelIQ</ion-title> -->
-          <ion-img
-            src="/src/assets/img/logo.png"
-            alt="labelIQ"
-            class="logo"
-          ></ion-img>
+          <ion-img src="/labeliq-nobg.png" alt="labelIQ" class="logo"></ion-img>
         </ion-toolbar>
       </ion-header>
       <ion-card style="margin-top: 2%">
