@@ -9,7 +9,7 @@
           color="dark"
           slot="end"
           style="cursor: pointer"
-          @click="presentToast"
+          @click="aboutToast"
         ></ion-icon>
       </ion-toolbar>
     </ion-header>
@@ -47,10 +47,11 @@
               size="small"
               color="tertiary"
               @click="imgUploadDialog"
-              :disabled="imgFile === null"
+              v-if="haveImg"
               >Analyze</ion-button
             >
             <ion-loading
+              v-if="haveImg"
               trigger="open-loading"
               :duration="5000"
               message="Launching AI results..."
@@ -140,14 +141,43 @@
           </ion-row>
         </ion-list>
       </ion-grid> -->
+      <!-- Camera Modal -->
+      <ion-modal :is-open="isModalOpen" @didDismiss="closeCameraModal">
+        <ion-content>
+          <div class="camera-modal">
+            <video ref="videoRef" autoplay playsinline></video>
+            <canvas ref="canvasRef" style="display: none"></canvas>
 
-      <ion-fab vertical="bottom" horizontal="center" slot="fixed">
-        <!-- <ion-fab-button aria-label="Fab button" @click="addNewToGallery()"> -->
+            <div class="actions">
+              <ion-button color="success" @click="acceptPhoto">
+                <ion-icon :icon="checkmark"></ion-icon>
+              </ion-button>
+              <ion-button color="danger" @click="rejectPhoto">
+                <ion-icon :icon="close"></ion-icon>
+              </ion-button>
+            </div>
+          </div>
+        </ion-content>
+      </ion-modal>
+
+      <!-- <ion-fab vertical="bottom" horizontal="center" slot="fixed">
+        <ion-fab-button aria-label="Fab button" @click="addNewToGallery()">
         <ion-fab-button
           size="small"
           color="dark"
           aria-label="Fab button"
           @click="takePic()"
+          :disabled="!termsAccepted"
+        >
+          <ion-icon :icon="camera" size="small"></ion-icon>
+        </ion-fab-button>
+      </ion-fab> -->
+      <ion-fab vertical="bottom" horizontal="center" slot="fixed">
+        <ion-fab-button
+          size="small"
+          color="dark"
+          aria-label="Fab button"
+          @click="openCameraModal"
           :disabled="!termsAccepted"
         >
           <ion-icon :icon="camera" size="small"></ion-icon>
@@ -161,11 +191,12 @@
 import {
   arrowDown,
   informationCircleOutline,
+  checkmark,
   camera,
   close,
   trash,
 } from "ionicons/icons";
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import {
   IonButton,
   IonCard,
@@ -180,6 +211,7 @@ import {
   IonItem,
   IonLabel,
   IonLoading,
+  IonModal,
   IonFab,
   IonFabButton,
   IonIcon,
@@ -241,6 +273,81 @@ const takePic = async () => {
     console.error(error);
   }
 };
+//===========
+const videoRef = ref<HTMLVideoElement | null>(null);
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+const isModalOpen = ref(false);
+let stream: MediaStream | null = null;
+const photos = ref<{ id: number; data: string }[]>([]);
+
+async function openCameraModal() {
+  isModalOpen.value = true;
+  await startCamera();
+}
+
+function closeCameraModal() {
+  stopCamera();
+  isModalOpen.value = false;
+}
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      // video: { facingMode: { exact: "environment" } },
+      video: { facingMode: { ideal: "environment" } },
+    });
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream;
+      await videoRef.value.play();
+    }
+  } catch (err) {
+    console.error("Camera error:", err);
+    closeCameraModal();
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach((track) => track.stop());
+    stream = null;
+  }
+}
+
+async function acceptPhoto() {
+  if (!videoRef.value || !canvasRef.value) return;
+  const video = videoRef.value;
+  const canvas = canvasRef.value;
+  const ctx = canvas.getContext("2d");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  if (ctx) {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imgData = canvas.toDataURL("image/png");
+    // await savePhoto(imgData);
+    keptFotos.value.unshift(imgData);
+  }
+  closeCameraModal();
+}
+
+function rejectPhoto() {
+  closeCameraModal();
+}
+
+// async function loadPhotos() {
+//   photos.value = await db.table("photos").toArray();
+// }
+
+// async function savePhoto(data: string) {
+//   await db.table("photos").add({ data });
+//   await loadPhotos();
+// }
+
+// async function deletePhoto(id: number) {
+//   await db.table("photos").delete(id);
+//   await loadPhotos();
+// }
+
+//=============
 
 const imgInputRef = ref<HTMLInputElement | null>(null);
 const imgFile = ref<any>(null);
@@ -373,6 +480,20 @@ const presentToast = async () => {
   });
   await toast.present();
 };
+const aboutToast = async () => {
+  const toast = await toastController.create({
+    message:
+      "LabelIQ is your handy, AI-powered, trust-worthy help in knowing more about what is contained in what we consume.",
+    duration: 5000,
+    position: "middle",
+    color: "dark",
+  });
+  await toast.present();
+};
+
+onBeforeUnmount(() => {
+  stopCamera();
+});
 </script>
 
 <style lang="css" scoped>
@@ -419,6 +540,36 @@ input::placeholder {
   width: 80px;
   height: 38px;
   margin-left: 5px;
+}
+.camera-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+video {
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid #ccc;
+}
+.actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+.thumb-wrapper {
+  position: relative;
+}
+.thumb-wrapper img {
+  width: 100%;
+  border: 1px solid #ccc;
+}
+.trash-icon {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  color: red;
+  font-size: 24px;
+  cursor: pointer;
 }
 /** animate direction to camera icon arrow */
 @keyframes bounce {
