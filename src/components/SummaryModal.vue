@@ -38,8 +38,8 @@
         <ion-card-subtitle>Next move</ion-card-subtitle>
       </ion-card-header>
       <ion-card-content>
-        <ion-button color="dark">Export</ion-button>
-        <ion-button color="danger">Discard</ion-button>
+        <ion-button color="dark" disabled>Export</ion-button>
+        <ion-button color="tertiary" disabled>Share</ion-button>
       </ion-card-content>
     </ion-card>
   </ion-content>

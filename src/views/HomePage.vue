@@ -2,19 +2,36 @@
   <ion-page>
     <ion-header class="ion-no-border">
       <ion-toolbar>
-        <!-- <ion-title>LabelIQ</ion-title> -->
         <ion-img src="/labeliq-nobg.png" alt="labelIQ" class="logo"></ion-img>
+        <ion-icon
+          :icon="informationCircleOutline"
+          size="large"
+          color="dark"
+          slot="end"
+          style="cursor: pointer"
+          @click="presentToast"
+        ></ion-icon>
       </ion-toolbar>
     </ion-header>
     <ion-content :fullscreen="true">
       <ion-header class="ion-no-border" collapse="condense">
         <ion-toolbar>
-          <!-- <ion-title size="large">LabelIQ</ion-title> -->
           <ion-img src="/labeliq-nobg.png" alt="labelIQ" class="logo"></ion-img>
         </ion-toolbar>
       </ion-header>
-      <ion-card style="margin-top: 2%">
+      <ion-card style="margin-top: 5%">
         <ion-card-content>
+          <ion-label>
+            <ion-checkbox
+              label-placement="end"
+              @ion-change="toggleTermsCheck"
+            ></ion-checkbox>
+            I agree to the
+            <router-link to="/terms-and-conditions" tag="a"
+              >terms and conditions</router-link
+            >
+          </ion-label>
+          <hr />
           <ion-list>
             <ion-label>Select Image from your device</ion-label>
             <ion-item>
@@ -28,9 +45,10 @@
             <ion-button
               id="open-loading"
               size="small"
+              color="tertiary"
               @click="imgUploadDialog"
               :disabled="imgFile === null"
-              >Upload</ion-button
+              >Analyze</ion-button
             >
             <ion-loading
               trigger="open-loading"
@@ -38,22 +56,43 @@
               message="Launching AI results..."
             >
             </ion-loading>
+            <img
+              :src="preview"
+              alt="preview"
+              width="48px"
+              height="48px"
+              v-if="preview"
+            />
             <ion-button
               size="small"
               v-if="haveImg"
               color="danger"
               @click="clearUploadImg"
               >Clear</ion-button
-            ><br />
+            >
+            <br />
+            <hr />
+            <div
+              style="display: flex; flex-direction: column; align-items: center"
+            >
+              <ion-label>Or click the camera to take a photo</ion-label>
+              <ion-icon
+                color="tertiary"
+                :icon="arrowDown"
+                size="large"
+                class="arrow"
+                v-if="!cameraIsOpen"
+              ></ion-icon>
+            </div>
           </ion-list>
-          <ion-checkbox>I agree to the terms and conditions</ion-checkbox>
         </ion-card-content>
       </ion-card>
       <ion-grid v-if="keptFotos.length > 0">
-        <ion-list>
+        <ion-list style="padding: 6px">
+          <ion-label color="medium">Click an image to analyze it</ion-label>
           <ion-row>
             <!-- CHANGE: Create a new column and image component for each photo -->
-            <ion-col size="3" :key="foto.filepath" v-for="foto in keptFotos">
+            <ion-col size="1" :key="foto.filepath" v-for="foto in keptFotos">
               <div class="img-div" id="show-loading">
                 <ion-img
                   :src="foto"
@@ -65,6 +104,7 @@
                   class="trash-icon"
                   color="danger"
                   :icon="trash"
+                  @click="() => removeGridPhoto(foto)"
                 ></ion-icon>
               </div>
             </ion-col>
@@ -73,7 +113,7 @@
         <ion-loading
           trigger="show-loading"
           :duration="5000"
-          message="Starting processes..."
+          message="Please, wait..."
         >
         </ion-loading>
       </ion-grid>
@@ -102,11 +142,15 @@
       </ion-grid> -->
 
       <ion-fab vertical="bottom" horizontal="center" slot="fixed">
-        <!-- CHANGE: Add a click event listener to the floating action button. -->
-
         <!-- <ion-fab-button aria-label="Fab button" @click="addNewToGallery()"> -->
-        <ion-fab-button aria-label="Fab button" @click="takePhoto()">
-          <ion-icon :icon="camera"></ion-icon>
+        <ion-fab-button
+          size="small"
+          color="dark"
+          aria-label="Fab button"
+          @click="takePic()"
+          :disabled="!termsAccepted"
+        >
+          <ion-icon :icon="camera" size="small"></ion-icon>
         </ion-fab-button>
       </ion-fab>
     </ion-content>
@@ -114,7 +158,13 @@
 </template>
 
 <script setup lang="ts">
-import { camera, close, trash } from "ionicons/icons";
+import {
+  arrowDown,
+  informationCircleOutline,
+  camera,
+  close,
+  trash,
+} from "ionicons/icons";
 import { ref } from "vue";
 import {
   IonButton,
@@ -138,31 +188,65 @@ import {
   IonTitle,
   IonContent,
   modalController,
+  toastController,
 } from "@ionic/vue";
 
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-
+import {
+  Camera,
+  CameraDirection,
+  CameraResultType,
+  CameraSource,
+} from "@capacitor/camera";
+//import { ActionSheet, ActionSheetButtonStyle } from "@capacitor/action-sheet";
 import SummaryModal from "@/components/SummaryModal.vue";
 
-// CHANGE: Add `usePhotoGallery` import
-import { usePhotoGallery } from "@/composables/usePhotoGallery";
+// // CHANGE: Add `usePhotoGallery` import
+// import { usePhotoGallery } from "@/composables/usePhotoGallery";
 
 import { puter } from "@heyputer/puter.js";
 
-// CHANGE: Destructure `addNewToGallery` from `usePhotoGallery()
-const { photos, addNewToGallery } = usePhotoGallery();
+// // CHANGE: Destructure `addNewToGallery` from `usePhotoGallery()
+// const { photos, addNewToGallery } = usePhotoGallery();
 
-//const uploading = ref(false);
-const foto = ref<string | undefined>(undefined);
+//const foto = ref<string | undefined>(undefined);
 const keptFotos = ref<any[]>([]);
+const cameraIsOpen = ref(false);
+const termsAccepted = ref(false);
 
-// const urlInputRef = ref<HTMLInputElement | null>(null);
-// const urlFile = ref(null);
-// const haveUrl = ref(false);
-//const uploadImgRef = ref(null);
+const toggleTermsCheck = () => {
+  termsAccepted.value = !termsAccepted.value;
+  if (termsAccepted.value) {
+    presentToast();
+  }
+};
+
+// For actionsheet
+const imageUrl = ref<string | undefined>();
+// camera
+const takePic = async () => {
+  try {
+    cameraIsOpen.value = true;
+    const image = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: true,
+      resultType: CameraResultType.Uri,
+      direction: CameraDirection.Rear,
+    });
+
+    imageUrl.value = image.webPath;
+    keptFotos.value.unshift(imageUrl.value);
+    if (imageUrl.value) cameraIsOpen.value = false;
+  } catch (error) {
+    cameraIsOpen.value = false;
+    console.error(error);
+  }
+};
+
 const imgInputRef = ref<HTMLInputElement | null>(null);
 const imgFile = ref<any>(null);
 const haveImg = ref(false);
+
+const preview = ref<any>();
 
 const blobFromUrl = async (url: any) => {
   const response = await fetch(url);
@@ -199,24 +283,26 @@ const openSummaryModal = async (p: string | undefined) => {
 
 const handleImgUploadChange = (event: any) => {
   const file = event.target.files[0];
+  const blob = URL.createObjectURL(file);
+
+  // console.log("File: ", blob);
+  preview.value = blob;
+
   imgFile.value = file;
-  keptFotos.value.unshift(imgFile.value?.name);
+  keptFotos.value.unshift(preview.value);
   haveImg.value = true;
   //
-  console.log("imgFile: ", imgFile.value);
-  console.log("Type: ", typeof imgFile.value);
-  console.log("Array: ", keptFotos.value);
+  // console.log("imgFile: ", imgFile.value);
+
+  // console.log("Type: ", typeof imgFile.value);
+  // console.log("Array: ", keptFotos.value);
 };
 const imgUploadDialog = () => {
-  //uploading.value = true;
   if (imgFile.value !== null) {
     openSummaryModal(imgFile.value);
-    // handleSummaryModal(imgFile.value);
+
     clearUploadImg();
   }
-  // setTimeout(() => {
-  //   uploading.value = false;
-  // }, 5000);
 };
 
 const clearUploadImg = () => {
@@ -224,20 +310,68 @@ const clearUploadImg = () => {
     imgInputRef.value.value = "";
     imgFile.value = null;
     haveImg.value = false;
+    preview.value = null;
   }
 };
 
-const takePhoto = async () => {
-  const photo = await Camera.getPhoto({
-    resultType: CameraResultType.Uri,
-    source: CameraSource.Camera,
-    quality: 100,
+const removeGridPhoto = (id: any) => {
+  if (window.confirm(`Are you sure you want to remove this item?`)) {
+    // console.log("Done");
+    const pos = keptFotos.value.indexOf(id);
+
+    keptFotos.value.splice(pos, 1);
+  }
+};
+
+// const takePhoto = async () => {
+//   const photo = await Camera.getPhoto({
+//     resultType: CameraResultType.Uri,
+//     source: CameraSource.Camera,
+//     quality: 100,
+//   });
+//   foto.value = photo.webPath;
+//   keptFotos.value.unshift(foto.value);
+//   console.log("Value: ", foto.value);
+//   console.log("Type: ", typeof foto.value);
+//   console.log("Array: ", keptFotos.value);
+// };
+// //
+// const showActionSheet = async () => {
+//   const result = await ActionSheet.showActions({
+//     title: "Photo Options",
+//     message: "Select an option to perform",
+//     options: [
+//       {
+//         title: "Camera",
+//       },
+//       {
+//         title: "Upload",
+//       },
+//       {
+//         title: "Share",
+//       },
+//       {
+//         title: "Remove",
+//         style: ActionSheetButtonStyle.Destructive,
+//       },
+//     ],
+//   });
+
+//   console.log("Action Sheet result:", result);
+//   if (result.index === 0) {
+//     takePic();
+//   }
+// };
+
+const presentToast = async () => {
+  const toast = await toastController.create({
+    message:
+      "You'll be prompted to authenticate with Puter when using AI features for the first time.",
+    duration: 5000,
+    position: "middle",
+    color: "dark",
   });
-  foto.value = photo.webPath;
-  keptFotos.value.unshift(foto.value);
-  console.log("Value: ", foto.value);
-  console.log("Type: ", typeof foto.value);
-  console.log("Array: ", keptFotos.value);
+  await toast.present();
 };
 </script>
 
@@ -258,13 +392,17 @@ ion-toolbar {
   background: #fca82a;
   --background: linear-gradient(315deg, #fca82a, #d85c27);
 }
+ion-grid {
+  --ion-grid-columns: 3;
+  --ion-grid-margin-sm: 10px;
+}
 .img-div {
-  position: relative;
   width: 120px;
   height: 124px;
-  background-color: rgb(157, 236, 157);
+  /* background-color: rgb(157, 236, 157); */
   padding: 4px;
 }
+
 input {
   min-width: 320px;
 }
@@ -272,20 +410,34 @@ input::placeholder {
   font-size: small;
 }
 
-.trash-icon {
-  position: absolute;
-  top: 5;
-  right: 5;
-}
 .thumbnail {
-  width: 100px;
-  height: 100px;
+  width: 84px;
+  height: 84px;
   cursor: pointer;
-  margin-left: 6px;
 }
 .logo {
   width: 80px;
   height: 38px;
   margin-left: 5px;
+}
+/** animate direction to camera icon arrow */
+@keyframes bounce {
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-20px);
+  }
+  60% {
+    transform: translateY(-10px);
+  }
+}
+
+.arrow {
+  animation: bounce 1s infinite;
 }
 </style>
