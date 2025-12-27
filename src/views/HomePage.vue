@@ -53,7 +53,6 @@
               >Analyze</ion-button
             >
             <ion-loading
-              v-if="haveImg"
               trigger="open-loading"
               :duration="5000"
               message="Launching AI results..."
@@ -94,7 +93,7 @@
         <ion-list style="padding: 6px">
           <ion-label color="medium">Click an image to analyze it</ion-label>
           <ion-row>
-            <!-- CHANGE: Create a new column and image component for each photo -->
+            <!-- Create a new column and image component for each photo -->
             <ion-col size="1" :key="foto.filepath" v-for="foto in keptFotos">
               <div class="img-div" id="show-loading">
                 <ion-img
@@ -116,33 +115,11 @@
         <ion-loading
           trigger="show-loading"
           :duration="5000"
-          message="Please, wait..."
+          message="Launching AI results..."
         >
         </ion-loading>
       </ion-grid>
-      <!-- <ion-grid v-if="photos.length > 0">
-        <ion-list>
-          <ion-row>
-            
-            <ion-col size="3" :key="photo.filepath" v-for="photo in photos">
-              <div class="img-div">
-    
-                <ion-img
-                  :src="photo.webviewPath"
-                  alt="item"
-                  class="thumbnail"
-                  @click="() => openSummaryModal(photo.webviewPath)"
-                ></ion-img
-                ><ion-icon
-                  class="trash-icon"
-                  color="danger"
-                  :icon="trash"
-                ></ion-icon>
-              </div>
-            </ion-col>
-          </ion-row>
-        </ion-list>
-      </ion-grid> -->
+
       <!-- Camera Modal -->
       <ion-modal :is-open="isModalOpen" @didDismiss="closeCameraModal">
         <ion-content>
@@ -234,12 +211,12 @@ import {
 //import { ActionSheet, ActionSheetButtonStyle } from "@capacitor/action-sheet";
 import SummaryModal from "@/components/SummaryModal.vue";
 
-// // CHANGE: Add `usePhotoGallery` import
+// // Add `usePhotoGallery` import
 // import { usePhotoGallery } from "@/composables/usePhotoGallery";
 
 import { puter } from "@heyputer/puter.js";
 
-// // CHANGE: Destructure `addNewToGallery` from `usePhotoGallery()
+// // Destructure `addNewToGallery` from `usePhotoGallery()
 // const { photos, addNewToGallery } = usePhotoGallery();
 
 //const foto = ref<string | undefined>(undefined);
@@ -254,33 +231,33 @@ const toggleTermsCheck = () => {
   }
 };
 
-// For actionsheet
-const imageUrl = ref<string | undefined>();
-// camera
-const takePic = async () => {
-  try {
-    cameraIsOpen.value = true;
-    const image = await Camera.getPhoto({
-      quality: 90,
-      allowEditing: true,
-      resultType: CameraResultType.Uri,
-      direction: CameraDirection.Rear,
-    });
+// // For actionsheet
+// const imageUrl = ref<string | undefined>();
+// // camera
+// const takePic = async () => {
+//   try {
+//     cameraIsOpen.value = true;
+//     const image = await Camera.getPhoto({
+//       quality: 90,
+//       allowEditing: true,
+//       resultType: CameraResultType.Uri,
+//       direction: CameraDirection.Rear,
+//     });
 
-    imageUrl.value = image.webPath;
-    keptFotos.value.unshift(imageUrl.value);
-    if (imageUrl.value) cameraIsOpen.value = false;
-  } catch (error) {
-    cameraIsOpen.value = false;
-    console.error(error);
-  }
-};
+//     imageUrl.value = image.webPath;
+//     keptFotos.value.unshift(imageUrl.value);
+//     if (imageUrl.value) cameraIsOpen.value = false;
+//   } catch (error) {
+//     cameraIsOpen.value = false;
+//     console.error(error);
+//   }
+// };
 //===========
 const videoRef = ref<HTMLVideoElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const isModalOpen = ref(false);
 let stream: MediaStream | null = null;
-const photos = ref<{ id: number; data: string }[]>([]);
+//const photos = ref<{ id: number; data: string }[]>([]);
 
 async function openCameraModal() {
   isModalOpen.value = true;
@@ -301,7 +278,7 @@ const navigatorToast = async (status: string) => {
         ? "Confirm that your browser site settings allows camera access for this app. (if on Chrome browser, go to Settings -> Site settings -> Camera -> Turn on camera in Android/iOS Settings -> Allow only while using the app)"
         : ""
     }`,
-    duration: 12000,
+    duration: 15000,
     position: "middle",
     color: "danger",
   });
@@ -313,46 +290,41 @@ async function startCamera() {
     .query({ name: "camera" })
     .then((result) => {
       if (result.state === "denied") {
-        // alert(
-        //   "Camera access is denied. You may upload an image of the ingredients label instead."
-        // );
         navigatorToast("denied")
           .then(() => {
             closeCameraModal();
           })
           .catch((e) => console.error(e));
       } else if (result.state === "prompt") {
-        // alert(
-        //   "Confirm that your browser site settings allows camera access for this app."
-        // );
         navigatorToast("prompt")
           .then(() => {
-            try {
-              navigator.mediaDevices
-                .getUserMedia({
-                  video: { facingMode: { exact: "environment" } },
-                  //video: true,
-                  audio: false,
-                  // video: { facingMode: { ideal: "environment" } },
-                })
-                .then((st) => {
-                  stream = st;
-                  if (videoRef.value) {
-                    videoRef.value.srcObject = stream;
-                    videoRef.value
-                      .play()
-                      .catch((e) =>
-                        console.error("videoRef.value.play err ", e)
-                      );
-                  }
-                });
-            } catch (err) {
-              console.error("Camera error:", err);
-              closeCameraModal();
-              alert(
-                `${err} - Check your browser site settings to allow camera access for this app.`
-              );
-            }
+            closeCameraModal();
+            // try {
+            //   navigator.mediaDevices
+            //     .getUserMedia({
+            //       video: { facingMode: { exact: "environment" } },
+            //       //video: true,
+            //       audio: false,
+            //       // video: { facingMode: { ideal: "environment" } },
+            //     })
+            //     .then((st) => {
+            //       stream = st;
+            //       if (videoRef.value) {
+            //         videoRef.value.srcObject = stream;
+            //         videoRef.value
+            //           .play()
+            //           .catch((e) =>
+            //             console.error("videoRef.value.play err ", e)
+            //           );
+            //       }
+            //     });
+            // } catch (err) {
+            //   console.error("Camera error:", err);
+            //   closeCameraModal();
+            //   alert(
+            //     `${err} - Check your browser site settings to allow camera access for this app.`
+            //   );
+            // }
           })
           .catch((e) => console.error(e));
       } else {
