@@ -292,20 +292,69 @@ function closeCameraModal() {
   isModalOpen.value = false;
 }
 
+const navigatorToast = async (status: string) => {
+  const toast = await toastController.create({
+    message: `${
+      status === "denied"
+        ? "Camera access is denied. You may upload an image of the ingredients label instead, or (if on Chrome browser, go to Settings -> Site settings -> Camera -> Turn on camera in Android/iOS Settings -> Allow only while using the app)."
+        : status === "prompt"
+        ? "Confirm that your browser site settings allows camera access for this app. (if on Chrome browser, go to Settings -> Site settings -> Camera -> Turn on camera in Android/iOS Settings -> Allow only while using the app)"
+        : ""
+    }`,
+    duration: 12000,
+    position: "middle",
+    color: "danger",
+  });
+  await toast.present();
+};
+
 async function startCamera() {
   navigator.permissions
     .query({ name: "camera" })
     .then((result) => {
       if (result.state === "denied") {
-        alert(
-          "Camera access is denied. Some features might not work properly."
-        );
-        closeCameraModal();
+        // alert(
+        //   "Camera access is denied. You may upload an image of the ingredients label instead."
+        // );
+        navigatorToast("denied")
+          .then(() => {
+            closeCameraModal();
+          })
+          .catch((e) => console.error(e));
       } else if (result.state === "prompt") {
-        alert(
-          "Camera access has not yet been determined. Check your browser settings to allow camera access."
-        );
-        closeCameraModal();
+        // alert(
+        //   "Confirm that your browser site settings allows camera access for this app."
+        // );
+        navigatorToast("prompt")
+          .then(() => {
+            try {
+              navigator.mediaDevices
+                .getUserMedia({
+                  video: { facingMode: { exact: "environment" } },
+                  //video: true,
+                  audio: false,
+                  // video: { facingMode: { ideal: "environment" } },
+                })
+                .then((st) => {
+                  stream = st;
+                  if (videoRef.value) {
+                    videoRef.value.srcObject = stream;
+                    videoRef.value
+                      .play()
+                      .catch((e) =>
+                        console.error("videoRef.value.play err ", e)
+                      );
+                  }
+                });
+            } catch (err) {
+              console.error("Camera error:", err);
+              closeCameraModal();
+              alert(
+                `${err} - Check your browser site settings to allow camera access for this app.`
+              );
+            }
+          })
+          .catch((e) => console.error(e));
       } else {
         console.log(`Permissions: ${result.state}`);
         try {
@@ -328,7 +377,9 @@ async function startCamera() {
         } catch (err) {
           console.error("Camera error:", err);
           closeCameraModal();
-          alert(`Cannot launch camera: ${err}`);
+          alert(
+            `${err} - Check your browser site settings to allow camera access for this app.`
+          );
         }
       }
     })
