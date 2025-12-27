@@ -19,7 +19,7 @@
           <ion-img src="/labeliq-nobg.png" alt="labelIQ" class="logo"></ion-img>
         </ion-toolbar>
       </ion-header>
-      <ion-card style="margin-top: 5%">
+      <ion-card style="margin-top: 2%">
         <ion-card-content>
           <ion-label>
             <ion-checkbox
@@ -32,6 +32,7 @@
             >
           </ion-label>
           <hr />
+
           <ion-list>
             <ion-label>Select Image from your device</ion-label>
             <ion-item>
@@ -39,6 +40,7 @@
                 ref="imgInputRef"
                 type="file"
                 id="img-upload"
+                :disabled="!termsAccepted"
                 @change="handleImgUploadChange"
               />
             </ion-item>
@@ -47,7 +49,7 @@
               size="small"
               color="tertiary"
               @click="imgUploadDialog"
-              v-if="haveImg"
+              :disabled="!imgFile"
               >Analyze</ion-button
             >
             <ion-loading
@@ -293,8 +295,9 @@ function closeCameraModal() {
 async function startCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      // video: { facingMode: { exact: "environment" } },
-      video: { facingMode: { ideal: "environment" } },
+      video: { facingMode: { exact: "environment" } },
+      audio: false,
+      // video: { facingMode: { ideal: "environment" } },
     });
     if (videoRef.value) {
       videoRef.value.srcObject = stream;
@@ -303,6 +306,7 @@ async function startCamera() {
   } catch (err) {
     console.error("Camera error:", err);
     closeCameraModal();
+    alert(`Cannot launch camera: ${err}`);
   }
 }
 
@@ -473,7 +477,7 @@ const removeGridPhoto = (id: any) => {
 const presentToast = async () => {
   const toast = await toastController.create({
     message:
-      "You'll be prompted to authenticate with Puter when using AI features for the first time.",
+      "You'll be prompted to authenticate with Puter when using AI features for the first time. This also activates billing processes per your usage. Read 'terms and conditions' for details.",
     duration: 5000,
     position: "middle",
     color: "dark",
@@ -483,8 +487,8 @@ const presentToast = async () => {
 const aboutToast = async () => {
   const toast = await toastController.create({
     message:
-      "LabelIQ is your handy, AI-powered, trust-worthy help in knowing more about what is contained in what we consume.",
-    duration: 5000,
+      "LabelIQ is your handy, AI-powered help in knowing more about what is contained in what you use/consume. Find out about food or product ingredients before you buy/use them. Agree to terms & conditions to enable action 'Choose File' and Camera buttons.",
+    duration: 12000,
     position: "middle",
     color: "dark",
   });
@@ -535,6 +539,7 @@ input::placeholder {
   width: 84px;
   height: 84px;
   cursor: pointer;
+  /* background-color: greenyellow; */
 }
 .logo {
   width: 80px;
@@ -564,9 +569,9 @@ video {
   border: 1px solid #ccc;
 }
 .trash-icon {
-  position: absolute;
+  /* position: absolute;
   top: 5px;
-  right: 5px;
+  right: 5px; */
   color: red;
   font-size: 24px;
   cursor: pointer;
