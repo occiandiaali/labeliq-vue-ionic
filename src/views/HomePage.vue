@@ -285,6 +285,33 @@ const navigatorToast = async (status: string) => {
   await toast.present();
 };
 
+function tryNavigator() {
+  try {
+    navigator.mediaDevices
+      .getUserMedia({
+        video: { facingMode: { exact: "environment" } },
+        //video: true,
+        audio: false,
+        // video: { facingMode: { ideal: "environment" } },
+      })
+      .then((st) => {
+        stream = st;
+        if (videoRef.value) {
+          videoRef.value.srcObject = stream;
+          videoRef.value
+            .play()
+            .catch((e) => console.error("videoRef.value.play err ", e));
+        }
+      });
+  } catch (err) {
+    console.error("Camera error:", err);
+    closeCameraModal();
+    alert(
+      `${err} - Check your browser site settings to allow camera access for this app.`
+    );
+  }
+}
+
 async function startCamera() {
   navigator.permissions
     .query({ name: "camera" })
@@ -298,61 +325,36 @@ async function startCamera() {
       } else if (result.state === "prompt") {
         navigatorToast("prompt")
           .then(() => {
-            closeCameraModal();
-            // try {
-            //   navigator.mediaDevices
-            //     .getUserMedia({
-            //       video: { facingMode: { exact: "environment" } },
-            //       //video: true,
-            //       audio: false,
-            //       // video: { facingMode: { ideal: "environment" } },
-            //     })
-            //     .then((st) => {
-            //       stream = st;
-            //       if (videoRef.value) {
-            //         videoRef.value.srcObject = stream;
-            //         videoRef.value
-            //           .play()
-            //           .catch((e) =>
-            //             console.error("videoRef.value.play err ", e)
-            //           );
-            //       }
-            //     });
-            // } catch (err) {
-            //   console.error("Camera error:", err);
-            //   closeCameraModal();
-            //   alert(
-            //     `${err} - Check your browser site settings to allow camera access for this app.`
-            //   );
-            // }
+            tryNavigator();
           })
           .catch((e) => console.error(e));
       } else {
         console.log(`Permissions: ${result.state}`);
-        try {
-          navigator.mediaDevices
-            .getUserMedia({
-              video: { facingMode: { exact: "environment" } },
-              //video: true,
-              audio: false,
-              // video: { facingMode: { ideal: "environment" } },
-            })
-            .then((st) => {
-              stream = st;
-              if (videoRef.value) {
-                videoRef.value.srcObject = stream;
-                videoRef.value
-                  .play()
-                  .catch((e) => console.error("videoRef.value.play err ", e));
-              }
-            });
-        } catch (err) {
-          console.error("Camera error:", err);
-          closeCameraModal();
-          alert(
-            `${err} - Check your browser site settings to allow camera access for this app.`
-          );
-        }
+        tryNavigator();
+        // try {
+        //   navigator.mediaDevices
+        //     .getUserMedia({
+        //       video: { facingMode: { exact: "environment" } },
+        //       //video: true,
+        //       audio: false,
+        //       // video: { facingMode: { ideal: "environment" } },
+        //     })
+        //     .then((st) => {
+        //       stream = st;
+        //       if (videoRef.value) {
+        //         videoRef.value.srcObject = stream;
+        //         videoRef.value
+        //           .play()
+        //           .catch((e) => console.error("videoRef.value.play err ", e));
+        //       }
+        //     });
+        // } catch (err) {
+        //   console.error("Camera error:", err);
+        //   closeCameraModal();
+        //   alert(
+        //     `${err} - Check your browser site settings to allow camera access for this app.`
+        //   );
+        // }
       }
     })
     .catch((error) => {
