@@ -198,7 +198,7 @@ import {
   close,
   trash,
 } from "ionicons/icons";
-import { onBeforeUnmount, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import {
   IonButton,
   IonCard,
@@ -293,21 +293,64 @@ function closeCameraModal() {
 }
 
 async function startCamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" } },
-      audio: false,
-      // video: { facingMode: { ideal: "environment" } },
+  navigator.permissions
+    .query({ name: "camera" })
+    .then((result) => {
+      if (result.state === "denied") {
+        alert(
+          "Camera access is denied. Some features might not work properly."
+        );
+        closeCameraModal();
+      } else if (result.state === "prompt") {
+        alert(
+          "Camera access has not yet been determined. Check your browser settings to allow camera access."
+        );
+        closeCameraModal();
+      } else {
+        console.log(`Permissions: ${result.state}`);
+        try {
+          navigator.mediaDevices
+            .getUserMedia({
+              video: { facingMode: { exact: "environment" } },
+              //video: true,
+              audio: false,
+              // video: { facingMode: { ideal: "environment" } },
+            })
+            .then((st) => {
+              stream = st;
+              if (videoRef.value) {
+                videoRef.value.srcObject = stream;
+                videoRef.value
+                  .play()
+                  .catch((e) => console.error("videoRef.value.play err ", e));
+              }
+            });
+        } catch (err) {
+          console.error("Camera error:", err);
+          closeCameraModal();
+          alert(`Cannot launch camera: ${err}`);
+        }
+      }
+    })
+    .catch((error) => {
+      console.log("Got error :", error);
     });
-    if (videoRef.value) {
-      videoRef.value.srcObject = stream;
-      await videoRef.value.play();
-    }
-  } catch (err) {
-    console.error("Camera error:", err);
-    closeCameraModal();
-    alert(`Cannot launch camera: ${err}`);
-  }
+  // try {
+  //   stream = await navigator.mediaDevices.getUserMedia({
+  //     video: { facingMode: { exact: "environment" } },
+  //     //video: true,
+  //     audio: false,
+  //     // video: { facingMode: { ideal: "environment" } },
+  //   });
+  //   if (videoRef.value) {
+  //     videoRef.value.srcObject = stream;
+  //     await videoRef.value.play();
+  //   }
+  // } catch (err) {
+  //   console.error("Camera error:", err);
+  //   closeCameraModal();
+  //   alert(`Cannot launch camera: ${err}`);
+  // }
 }
 
 function stopCamera() {
@@ -494,9 +537,25 @@ const aboutToast = async () => {
   });
   await toast.present();
 };
+const offlineToast = async () => {
+  const toast = await toastController.create({
+    message:
+      "It looks like you have poor/no Internet connection. You need connectivity to use this app properly.",
+    duration: 5000,
+    position: "middle",
+    color: "danger",
+  });
+  await toast.present();
+};
 
 onBeforeUnmount(() => {
   stopCamera();
+});
+
+onMounted(() => {
+  if (!navigator.onLine) {
+    offlineToast();
+  }
 });
 </script>
 
@@ -546,6 +605,7 @@ input::placeholder {
   height: 38px;
   margin-left: 5px;
 }
+
 .camera-modal {
   display: flex;
   flex-direction: column;
@@ -554,12 +614,14 @@ input::placeholder {
 video {
   width: 100%;
   max-width: 400px;
+
   border: 1px solid #ccc;
 }
 .actions {
   margin-top: 10px;
   display: flex;
-  gap: 10px;
+
+  gap: 16px;
 }
 .thumb-wrapper {
   position: relative;
